@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "pinata-project"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1161jfi7ait2p"
+s3_prefix = "pinata-project"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+parameter_overrides = "TABLE=\"Images\" REGION=\"eu-central-1\" AWSENV=\"AWS\""
