@@ -41,7 +41,7 @@ Resources:
           AWSENV: !Ref AWSENV
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Sub "arn:aws:secretsmanager:eu-central-1:600343431436:secret:openai-key-sT7Gwn"
+            SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:openai-key-sT7Gwn"
         - DynamoDBCrudPolicy:
             TableName: !Ref ImagesTable
       Events:
@@ -56,17 +56,29 @@ Resources:
       AttributeDefinitions:
         - AttributeName: "id"
           AttributeType: "S"
+        - AttributeName: "stage"
+          AttributeType: "N"
         - AttributeName: "created_dt"
           AttributeType: "S"
       KeySchema:
         - AttributeName: "id"
           KeyType: "HASH"
-        - AttributeName: "created_dt"
-          KeyType: "RANGE"
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
       TableName: "Images"
+      GlobalSecondaryIndexes:
+        - IndexName: "stage-created_dt"
+          KeySchema:
+            - AttributeName: "stage"
+              KeyType: "HASH"
+            - AttributeName: "created_dt"
+              KeyType: "RANGE"
+          Projection:
+              ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function

@@ -55,6 +55,8 @@ def lambda_handler(event, context):
         return {"statusCode": 400, "headers": {}, "body": "Bad request"}
 
     prompt = event["queryStringParameters"]["prompt"]
+    stage = event["queryStringParameters"]["stage"]
+    stage = stage or "no-stage"
 
     try:
 
@@ -78,6 +80,7 @@ def lambda_handler(event, context):
             "id": {"S": str(uuid.uuid4())},
             "created_dt": {"S": str(datetime.datetime.now())},
             "prompt": {"S": message},
+            "stage": {"N": str(stage)},
             "url": {"S": image_url},
             "expiration_dt": {"S": str(datetime.datetime.now() + datetime.timedelta(hours=1))}
         }
