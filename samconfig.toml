@@ -9,4 +9,5 @@ region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
-parameter_overrides = "TABLE=\"Images\" REGION=\"eu-central-1\" AWSENV=\"AWS\""
+parameter_overrides = "table=\"Images\" region=\"eu-central-1\" awsEnv=\"AWS\" indexName=\"stage-created_dt\""
+

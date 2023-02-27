@@ -76,13 +76,16 @@ def lambda_handler(event, context):
             size="1024x1024"
         )
         image_url = openai_response['data'][0]['url']
+        time_epoch = datetime.datetime.now().timestamp()
+        expiration_time_epoch = time_epoch + 3600
+
         item = {
             "id": {"S": str(uuid.uuid4())},
-            "created_dt": {"S": str(datetime.datetime.now())},
+            "created_dt": {"S": str(time_epoch)},
             "prompt": {"S": message},
             "stage": {"N": str(stage)},
             "image_url": {"S": image_url},
-            "expiration_dt": {"S": str(datetime.datetime.now() + datetime.timedelta(hours=1))}
+            "expiration_dt": {"S": str(expiration_time_epoch)}
         }
         ddb_client.put_item(TableName=table_name, Item=item)
         return {"statusCode": 201, "headers": {}, "body": json.dumps({"url": image_url, "prompt": message})}

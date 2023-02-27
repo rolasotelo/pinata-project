@@ -12,69 +12,29 @@ Globals:
   Function:
     Timeout: 15
     MemorySize: 128
+    Runtime: python3.9
+    Architectures:
+      - x86_64
 
 Parameters:
-  TABLE:
+  table:
     Type: String
     Description: Table name
     Default: Images
-  REGION:
+  region:
     Type: String
     Description: Region name
     Default: eu-central-1
-  AWSENV:
+  awsEnv:
     Type: String
     Description: AWS env
     Default: AWS
+  indexName:
+    Type: String
+    Description: Index name
+    Default: stage-created_dt
 
 Resources:
-  CreateImageFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: src/create_image
-      Handler: app.lambda_handler
-      Runtime: python3.9
-      Architectures:
-        - x86_64
-      Environment:
-        Variables:
-          TABLE: !Ref TABLE
-          REGION: !Ref REGION
-          AWSENV: !Ref AWSENV
-      Policies:
-        - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:openai-key-sT7Gwn"
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ImagesTable
-      Events:
-        CreateImage:
-          Type: Api
-          Properties:
-            Path: /images
-            Method: put
-  GetImagesFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: src/read_images
-      Handler: app.lambda_handler
-      Runtime: python3.9
-      Architectures:
-        - x86_64
-      Environment:
-        Variables:
-          TABLE: !Ref TABLE
-          REGION: !Ref REGION
-          AWSENV: !Ref AWSENV
-          INDEX_NAME: !GetAtt ImagesTable.GlobalSecondaryIndexes[0].IndexName
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ImagesTable
-      Events:
-        GetImages:
-          Type: Api
-          Properties:
-            Path: /images
-            Method: get
   ImagesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -91,19 +51,60 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
-      TableName: !Ref TABLE
+      TableName: !Ref table
       GlobalSecondaryIndexes:
-        - IndexName: "stage-created_dt"
+        - IndexName: !Ref indexName
           KeySchema:
             - AttributeName: "stage"
               KeyType: "HASH"
             - AttributeName: "created_dt"
               KeyType: "RANGE"
           Projection:
-              ProjectionType: "ALL"
+            ProjectionType: "ALL"
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
+  CreateImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/create_image
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE: !Ref table
+          REGION: !Ref region
+          AWSENV: !Ref awsEnv
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:openai-key-sT7Gwn"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ImagesTable
+      Events:
+        CreateImage:
+          Type: Api
+          Properties:
+            Path: /images
+            Method: put
+  GetImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/read_images
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE: !Ref table
+          REGION: !Ref region
+          AWSENV: !Ref awsEnv
+          INDEX_NAME: !Ref indexName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ImagesTable
+      Events:
+        GetImages:
+          Type: Api
+          Properties:
+            Path: /images
+            Method: get
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
