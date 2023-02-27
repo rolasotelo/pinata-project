@@ -1,11 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  pinata project
+  Pinata project API
 
-  For my presentation to kids in Prague
+  During the month of March 2023, I'll have a presentation in front of a
+  classroom of kids. I want to show them a bit of Mexico, Cloud Computing,
+  and AI. More specifically, I want to show them how we can use AI to generate 
+  images an how we can use cloud computing to deploy a web application.
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 15
@@ -18,16 +20,16 @@ Parameters:
     Default: Images
   REGION:
     Type: String
-    Description: region name
+    Description: Region name
     Default: eu-central-1
   AWSENV:
     Type: String
-    Description: aws env
+    Description: AWS env
     Default: AWS
 
 Resources:
   CreateImageFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/create_image
       Handler: app.lambda_handler
@@ -46,10 +48,33 @@ Resources:
             TableName: !Ref ImagesTable
       Events:
         CreateImage:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /images
             Method: put
+  GetImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/read_images
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          TABLE: !Ref TABLE
+          REGION: !Ref REGION
+          AWSENV: !Ref AWSENV
+          INDEX_NAME: !GetAtt ImagesTable.GlobalSecondaryIndexes[0].IndexName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ImagesTable
+      Events:
+        GetImages:
+          Type: Api
+          Properties:
+            Path: /images
+            Method: get
   ImagesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -66,7 +91,7 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
-      TableName: "Images"
+      TableName: !Ref TABLE
       GlobalSecondaryIndexes:
         - IndexName: "stage-created_dt"
           KeySchema:

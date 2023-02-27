@@ -81,7 +81,7 @@ def lambda_handler(event, context):
             "created_dt": {"S": str(datetime.datetime.now())},
             "prompt": {"S": message},
             "stage": {"N": str(stage)},
-            "url": {"S": image_url},
+            "image_url": {"S": image_url},
             "expiration_dt": {"S": str(datetime.datetime.now() + datetime.timedelta(hours=1))}
         }
         ddb_client.put_item(TableName=table_name, Item=item)
