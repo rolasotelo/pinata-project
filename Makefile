@@ -1,8 +1,11 @@
-run_dev: is_dynamodb_local_running validate_template build
-	@echo "Running in development mode 🔥"
+start_dev: run_dynamodb_local_if_not_running
+	@echo "Starting development mode 🏡"
 	@sam local start-api \
      --docker-network lambda-local \
      --parameter-overrides 'AWSENV=AWS_SAM_LOCAL'
+
+stop_dev: stop_dynamodb_local
+	@echo "Stopping development mode 👋"
 
 deploy: validate_template build
 	@echo "Deploying 🚀"
@@ -16,11 +19,6 @@ validate_template:
 	@echo "Validating template 🚓"
 	@aws cloudformation validate-template --template-body file://template.yaml
 
-# docker container for dynamodb local is running
-is_dynamodb_local_running:
-	@echo "Checking if DynamoDB Local is running 🎬"
-	@docker inspect -f '{{.State.Running}}' dynamodb
-
 run_dynamodb_local:
 	@echo "Running DynamoDB Local 🐳"
 	@docker run \
@@ -32,3 +30,12 @@ run_dynamodb_local:
 	 -v /Users/rolandosotelo/.docker/dynamodb:/data/ \
 	 amazon/dynamodb-local \
 	 -jar DynamoDBLocal.jar -sharedDb -dbPath /data
+
+stop_dynamodb_local:
+	@echo "Stopping DynamoDB Local 🧹"
+	@docker stop dynamodb
+
+# run dynamodb local if not running
+run_dynamodb_local_if_not_running:
+	@echo "Checking if DynamoDB Local is running 🎬"
+	@docker container inspect dynamodb > /dev/null 2>&1 || make run_dynamodb_local
