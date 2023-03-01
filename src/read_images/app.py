@@ -11,7 +11,7 @@ allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
 # delete first and last character of the string
 trimmed_origin = allowed_origins[1:-1]
 
-if aws_environment == "'Local'":
+if aws_environment == "Local":
     ddb_client = boto3.client(
         "dynamodb", endpoint_url="http://dynamodb:8000"
     )
