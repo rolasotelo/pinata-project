@@ -1,8 +1,8 @@
-start_dev: run_dynamodb_local_if_not_running
+start_dev: run_dynamodb_local_if_not_running build
 	@echo "Starting development mode 🏡"
 	@sam local start-api \
      --docker-network lambda-local \
-     --parameter-overrides 'AWSENV=AWS_SAM_LOCAL'
+     --parameter-overrides "ParameterKey=awsEnv,ParameterValue=Local"
 
 stop_dev: stop_dynamodb_local
 	@echo "Stopping development mode 👋"

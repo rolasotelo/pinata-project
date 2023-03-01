@@ -8,10 +8,12 @@ import datetime
 
 table_name = os.environ.get("TABLE", "Images")
 region = os.environ.get("REGION", "eu-central-1")
-aws_environment = os.environ.get("AWSENV", "AWS")
+aws_environment = os.environ.get("AWSENV", "Local")
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
+# delete first and last character of the string
+trimmed_origin = allowed_origins[1:-1]
 
-
-if aws_environment == "AWS_SAM_LOCAL":
+if aws_environment == "Local":
     ddb_client = boto3.client(
         "dynamodb", endpoint_url="http://dynamodb:8000"
     )
@@ -52,7 +54,8 @@ def lambda_handler(event, context):
     """
 
     if not event["queryStringParameters"] or event["queryStringParameters"] == "":
-        return {"statusCode": 400, "headers": {}, "body": "Bad request"}
+        return {"statusCode": 400, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                "body": "Bad request"}
 
     prompt = event["queryStringParameters"]["prompt"]
     stage = event["queryStringParameters"]["stage"]
@@ -88,7 +91,8 @@ def lambda_handler(event, context):
             "expiration_dt": {"S": str(expiration_time_epoch)}
         }
         ddb_client.put_item(TableName=table_name, Item=item)
-        return {"statusCode": 201, "headers": {}, "body": json.dumps({"url": image_url, "prompt": message})}
+        return {"statusCode": 201, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                "body": json.dumps({"image_url": image_url, "prompt": message, "id": item["id"]["S"]})}
     except Exception as e:
-        print(e)
-        return {"statusCode": 500, "headers": {}, "body": "Internal Server Error"}
+        return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                "body": json.dumps({"error": str(e)})}

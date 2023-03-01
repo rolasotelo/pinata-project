@@ -28,13 +28,29 @@ Parameters:
   awsEnv:
     Type: String
     Description: AWS env
-    Default: AWS
+    Default: Local
   indexName:
     Type: String
     Description: Index name
     Default: stage-created_dt
 
+Mappings:
+  StageMap:
+    Prod:
+      allowedOrigins: "'https://pinata-project-web.vercel.app'"
+    Local:
+      allowedOrigins: "'http://localhost:3001'"
+
 Resources:
+  PinataApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowOrigin: !FindInMap [StageMap, !Ref awsEnv, allowedOrigins]
+        AllowHeaders: "'*'"
+        AllowMethods: "'GET,PUT,OPTIONS'"
+        AllowCredentials: true
   ImagesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -67,13 +83,14 @@ Resources:
   CreateImageFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/create_image
+      CodeUri: src/create_images
       Handler: app.lambda_handler
       Environment:
         Variables:
           TABLE: !Ref table
           REGION: !Ref region
           AWSENV: !Ref awsEnv
+          ALLOWED_ORIGINS: !FindInMap [StageMap, !Ref awsEnv, allowedOrigins]
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:openai-key-sT7Gwn"
@@ -85,6 +102,7 @@ Resources:
           Properties:
             Path: /images
             Method: put
+            RestApiId: !Ref PinataApi
   GetImagesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -96,6 +114,7 @@ Resources:
           REGION: !Ref region
           AWSENV: !Ref awsEnv
           INDEX_NAME: !Ref indexName
+          ALLOWED_ORIGINS: !FindInMap [StageMap, !Ref awsEnv, allowedOrigins]
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ImagesTable
@@ -105,6 +124,7 @@ Resources:
           Properties:
             Path: /images
             Method: get
+            RestApiId: !Ref PinataApi
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
