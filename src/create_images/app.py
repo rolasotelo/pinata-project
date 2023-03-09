@@ -60,9 +60,39 @@ def lambda_handler(event, context):
     prompt = event["queryStringParameters"]["prompt"]
     stage = event["queryStringParameters"]["stage"]
     stage = stage or "no-stage"
+    image_url = ""
+    input_url = ""
+    if "image_url" in event["queryStringParameters"]:
+        image_url = event["queryStringParameters"]["image_url"]
+    if "input_url" in event["queryStringParameters"]:
+        input_url = event["queryStringParameters"]["input_url"]
+
+    if image_url != "":
+        try:
+            base64_bytes = prompt.encode('ascii')
+            message_bytes = base64.b64decode(base64_bytes)
+            message = message_bytes.decode('ascii')
+            time_epoch = datetime.datetime.now().timestamp()
+            expiration_time_epoch = time_epoch + 3600
+
+            item = {
+                "id": {"S": str(uuid.uuid4())},
+                "created_dt": {"S": str(time_epoch)},
+                "prompt": {"S": message},
+                "stage": {"S": str(stage)},
+                "image_url": {"S": image_url},
+                "input_url": {"S": input_url},
+                "expiration_dt": {"S": str(expiration_time_epoch)}
+            }
+            ddb_client.put_item(TableName=table_name, Item=item)
+            return {"statusCode": 201, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                    "body": json.dumps(
+                        {"image_url": image_url, "input_url": input_url, "prompt": message, "id": item["id"]["S"]})}
+        except Exception as e:
+            return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                    "body": json.dumps({"error": str(e)})}
 
     try:
-
         get_secret_value_response = sm_client.get_secret_value(
             SecretId=secret_name
         )
@@ -86,13 +116,14 @@ def lambda_handler(event, context):
             "id": {"S": str(uuid.uuid4())},
             "created_dt": {"S": str(time_epoch)},
             "prompt": {"S": message},
-            "stage": {"N": str(stage)},
+            "stage": {"S": str(stage)},
             "image_url": {"S": image_url},
+            "input_url": {"S": ""},
             "expiration_dt": {"S": str(expiration_time_epoch)}
         }
         ddb_client.put_item(TableName=table_name, Item=item)
         return {"statusCode": 201, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
-                "body": json.dumps({"image_url": image_url, "prompt": message, "id": item["id"]["S"]})}
+                "body": json.dumps({"image_url": image_url, "input_url": "", "prompt": message, "id": item["id"]["S"]})}
     except Exception as e:
         return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
                 "body": json.dumps({"error": str(e)})}

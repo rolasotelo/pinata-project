@@ -43,7 +43,6 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
 
-
     if not event["queryStringParameters"] or event["queryStringParameters"] == "":
         return {"statusCode": 400, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
                 "body": "Bad request"}
@@ -59,19 +58,20 @@ def lambda_handler(event, context):
             TableName=table_name,
             Select="SPECIFIC_ATTRIBUTES",
             IndexName=index_name,
-            Limit=10,
+            Limit=12,
             ScanIndexForward=False,
             KeyConditionExpression="stage = :stage AND created_dt > :limit_creation",
-            ProjectionExpression="image_url, prompt, expiration_dt, id",
+            ProjectionExpression="image_url, input_url, prompt, expiration_dt, id",
             ExpressionAttributeValues={
-                ":stage": {"N": stage},
+                ":stage": {"S": stage},
                 ":limit_creation": {"S": limit_creation_epoch}
             }
         )
 
         images = []
         for item in ddb_response["Items"]:
-            add_item = dict(image_url=item["image_url"]['S'], prompt=item["prompt"]['S'],
+            add_item = dict(image_url=item["image_url"]['S'], input_url=item["input_url"]['S'],
+                            prompt=item["prompt"]['S'],
                             expiration_dt=item["expiration_dt"]['S'], id=item["id"]['S'])
             images.append(add_item)
 

@@ -49,7 +49,7 @@ Resources:
       Cors:
         AllowOrigin: !FindInMap [StageMap, !Ref awsEnv, allowedOrigins]
         AllowHeaders: "'*'"
-        AllowMethods: "'GET,PUT,OPTIONS'"
+        AllowMethods: "'GET,OPTIONS,POST,DELETE'"
         AllowCredentials: true
   ImagesTable:
     Type: AWS::DynamoDB::Table
@@ -58,7 +58,7 @@ Resources:
         - AttributeName: "id"
           AttributeType: "S"
         - AttributeName: "stage"
-          AttributeType: "N"
+          AttributeType: "S"
         - AttributeName: "created_dt"
           AttributeType: "S"
       KeySchema:
@@ -80,7 +80,7 @@ Resources:
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
-  CreateImageFunction:
+  CreateImagesFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/create_images
@@ -97,11 +97,32 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref ImagesTable
       Events:
-        CreateImage:
+        CreateImages:
           Type: Api
           Properties:
             Path: /images
-            Method: put
+            Method: post
+            RestApiId: !Ref PinataApi
+  DeleteImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/delete_images
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE: !Ref table
+          REGION: !Ref region
+          AWSENV: !Ref awsEnv
+          ALLOWED_ORIGINS: !FindInMap [ StageMap, !Ref awsEnv, allowedOrigins ]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ImagesTable
+      Events:
+        PutImages:
+          Type: Api
+          Properties:
+            Path: /images
+            Method: delete
             RestApiId: !Ref PinataApi
   GetImagesFunction:
     Type: AWS::Serverless::Function

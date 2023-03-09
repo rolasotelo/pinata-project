@@ -39,3 +39,7 @@ stop_dynamodb_local:
 run_dynamodb_local_if_not_running:
 	@echo "Checking if DynamoDB Local is running 🎬"
 	@docker container inspect dynamodb > /dev/null 2>&1 || make run_dynamodb_local
+
+delete_local_dynamodb_table:
+	@echo "Deleting local DynamoDB table 🔥"
+	@aws dynamodb delete-table --table-name Images --endpoint-url http://localhost:8000
