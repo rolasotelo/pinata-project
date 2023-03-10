@@ -61,7 +61,7 @@ def lambda_handler(event, context):
             Limit=12,
             ScanIndexForward=False,
             KeyConditionExpression="stage = :stage AND created_dt > :limit_creation",
-            ProjectionExpression="image_url, input_url, prompt, expiration_dt, id",
+            ProjectionExpression="image_url, input_url, prompt, expiration_dt, id, prompt_context",
             ExpressionAttributeValues={
                 ":stage": {"S": stage},
                 ":limit_creation": {"S": limit_creation_epoch}
@@ -70,8 +70,12 @@ def lambda_handler(event, context):
 
         images = []
         for item in ddb_response["Items"]:
+            possible_prompt_context = ''
+            if "prompt_context" in item:
+                possible_prompt_context = item["prompt_context"]['S']
             add_item = dict(image_url=item["image_url"]['S'], input_url=item["input_url"]['S'],
                             prompt=item["prompt"]['S'],
+                            prompt_context=possible_prompt_context,
                             expiration_dt=item["expiration_dt"]['S'], id=item["id"]['S'])
             images.append(add_item)
 
