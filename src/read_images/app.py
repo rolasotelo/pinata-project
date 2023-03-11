@@ -44,11 +44,41 @@ def lambda_handler(event, context):
     """
 
     if not event["queryStringParameters"] or event["queryStringParameters"] == "":
+        try:
+            limit_creation = datetime.datetime.now() - datetime.timedelta(hours=1)
+            limit_creation_epoch = str(limit_creation.timestamp())
+            # get item from dynamodb with global secondary index
+            ddb_response = ddb_client.scan(
+                TableName=table_name,
+                Limit=100,
+                FilterExpression='created_dt > :limit_creation',
+                ExpressionAttributeValues={
+                    ':limit_creation': {'S': limit_creation_epoch}
+                }
+            )
+            images = []
+            for item in ddb_response["Items"]:
+                possible_prompt_context = ''
+                if "prompt_context" in item:
+                    possible_prompt_context = item["prompt_context"]['S']
+                add_item = dict(image_url=item["image_url"]['S'], input_url=item["input_url"]['S'],
+                                prompt=item["prompt"]['S'],
+                                prompt_context=possible_prompt_context,
+                                expiration_dt=item["expiration_dt"]['S'], id=item["id"]['S'])
+                images.append(add_item)
+
+            return {"statusCode": 201,
+                    "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                    "body": json.dumps({"images": images})}
+        except Exception as e:
+            return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
+                    "body": "Internal Server Error"}
+
+    if not event["queryStringParameters"] or event["queryStringParameters"] == "":
         return {"statusCode": 400, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
                 "body": "Bad request"}
 
     stage = event["queryStringParameters"]["stage"]
-    stage = stage or "no-stage"
     limit_creation = datetime.datetime.now() - datetime.timedelta(hours=1)
     limit_creation_epoch = str(limit_creation.timestamp())
 
