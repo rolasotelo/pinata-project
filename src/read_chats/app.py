@@ -3,10 +3,9 @@ import boto3
 import json
 import datetime
 
-table_name = os.environ.get("TABLE")
+table_name = os.environ.get("TABLE", "Chats")
 region = os.environ.get("REGION")
 aws_environment = os.environ.get("AWSENV", "Local")
-index_name = os.environ.get("INDEX_NAME")
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
 # delete first and last character of the string
 trimmed_origin = allowed_origins[1:-1]
@@ -44,37 +43,6 @@ def lambda_handler(event, context):
     """
 
     if not event["queryStringParameters"] or event["queryStringParameters"] == "":
-        try:
-            limit_creation = datetime.datetime.now() - datetime.timedelta(hours=1)
-            limit_creation_epoch = str(limit_creation.timestamp())
-            # get item from dynamodb with global secondary index
-            ddb_response = ddb_client.scan(
-                TableName=table_name,
-                Limit=150,
-                FilterExpression='created_dt > :limit_creation',
-                ExpressionAttributeValues={
-                    ':limit_creation': {'S': limit_creation_epoch}
-                }
-            )
-            images = []
-            for item in ddb_response["Items"]:
-                possible_prompt_context = ''
-                if "prompt_context" in item:
-                    possible_prompt_context = item["prompt_context"]['S']
-                add_item = dict(image_url=item["image_url"]['S'], input_url=item["input_url"]['S'],
-                                prompt=item["prompt"]['S'],
-                                prompt_context=possible_prompt_context,
-                                expiration_dt=item["expiration_dt"]['S'], id=item["id"]['S'])
-                images.append(add_item)
-
-            return {"statusCode": 201,
-                    "headers": {"Access-Control-Allow-Origin": trimmed_origin},
-                    "body": json.dumps({"images": images})}
-        except Exception as e:
-            return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
-                    "body": "Internal Server Error"}
-
-    if not event["queryStringParameters"] or event["queryStringParameters"] == "":
         return {"statusCode": 400, "headers": {"Access-Control-Allow-Origin": trimmed_origin},
                 "body": "Bad request"}
 
@@ -87,31 +55,29 @@ def lambda_handler(event, context):
         ddb_response = ddb_client.query(
             TableName=table_name,
             Select="SPECIFIC_ATTRIBUTES",
-            IndexName=index_name,
             Limit=24,
-            ScanIndexForward=False,
             KeyConditionExpression="stage = :stage AND created_dt > :limit_creation",
-            ProjectionExpression="image_url, input_url, prompt, expiration_dt, id, prompt_context",
+            ProjectionExpression="prompt_response, prompt, expiration_dt, prompt_context",
             ExpressionAttributeValues={
                 ":stage": {"S": stage},
                 ":limit_creation": {"S": limit_creation_epoch}
             }
         )
 
-        images = []
+        responses = []
         for item in ddb_response["Items"]:
             possible_prompt_context = ''
             if "prompt_context" in item:
                 possible_prompt_context = item["prompt_context"]['S']
-            add_item = dict(image_url=item["image_url"]['S'], input_url=item["input_url"]['S'],
+            add_item = dict(response=item["prompt_response"]['S'],
                             prompt=item["prompt"]['S'],
                             prompt_context=possible_prompt_context,
-                            expiration_dt=item["expiration_dt"]['S'], id=item["id"]['S'])
-            images.append(add_item)
+                            expiration_dt=item["expiration_dt"]['S'])
+            responses.append(add_item)
 
         return {"statusCode": 201,
                 "headers": {"Access-Control-Allow-Origin": trimmed_origin},
-                "body": json.dumps({"images": images})}
+                "body": json.dumps({"responses": responses})}
     except Exception as e:
         print(e)
         return {"statusCode": 500, "headers": {"Access-Control-Allow-Origin": trimmed_origin},

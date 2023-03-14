@@ -21,6 +21,10 @@ Parameters:
     Type: String
     Description: Table name
     Default: Images
+  chatTable:
+    Type: String
+    Description: Chat Table name
+    Default: Chats
   region:
     Type: String
     Description: Region name
@@ -64,9 +68,7 @@ Resources:
       KeySchema:
         - AttributeName: "id"
           KeyType: "HASH"
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      BillingMode: PAY_PER_REQUEST
       TableName: !Ref table
       GlobalSecondaryIndexes:
         - IndexName: !Ref indexName
@@ -77,9 +79,21 @@ Resources:
               KeyType: "RANGE"
           Projection:
             ProjectionType: "ALL"
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
+  ChatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "stage"
+          AttributeType: "S"
+        - AttributeName: "created_dt"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "stage"
+          KeyType: "HASH"
+        - AttributeName: "created_dt"
+          KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Ref chatTable
   CreateImagesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -144,6 +158,50 @@ Resources:
           Type: Api
           Properties:
             Path: /images
+            Method: get
+            RestApiId: !Ref PinataApi
+  CreateChatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/create_chats
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE: !Ref chatTable
+          REGION: !Ref region
+          AWSENV: !Ref awsEnv
+          ALLOWED_ORIGINS: !FindInMap [ StageMap, !Ref awsEnv, allowedOrigins ]
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:openai-key-sT7Gwn"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatsTable
+      Events:
+        CreateImages:
+          Type: Api
+          Properties:
+            Path: /chats
+            Method: post
+            RestApiId: !Ref PinataApi
+  GetChatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/read_chats
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE: !Ref chatTable
+          REGION: !Ref region
+          AWSENV: !Ref awsEnv
+          ALLOWED_ORIGINS: !FindInMap [ StageMap, !Ref awsEnv, allowedOrigins ]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatsTable
+      Events:
+        GetImages:
+          Type: Api
+          Properties:
+            Path: /chats
             Method: get
             RestApiId: !Ref PinataApi
 
